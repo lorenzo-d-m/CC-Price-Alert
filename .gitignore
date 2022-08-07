@@ -1,4 +1,5 @@
 custom/*
+!custom/listing.json
 __pycache__/
 venv/
 cmc_manually_launch/
