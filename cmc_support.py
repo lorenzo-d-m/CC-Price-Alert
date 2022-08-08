@@ -75,7 +75,8 @@ def background_price_check(symbol, upper_sp, lower_sp, update, context, stop_eve
                 context.bot.send_message(chat_id=update.effective_chat.id, \
                 text=f'{symbol} @${price} overtakes {lower_sp} LOWER stop-price.')
 
-        for i in range(10):
+        # 10 mins wait due to Coin Market Cap API query limits. However, every second it checks for /stopfollow command
+        for i in range(10*60):
             if stop_event.is_set():
                 return context.bot.send_message(chat_id=update.effective_chat.id, text=f'Stop following {symbol}')
             time.sleep(1)
