@@ -1,5 +1,4 @@
-custom/*
-!custom/listing.json
-__pycache__/
-venv/
-cmc_manually_launch/
+**__pycache__/
+.vscode/
+venv_cc_price_alert/
+custom/api_keys.py
