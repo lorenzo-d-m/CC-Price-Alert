@@ -30,12 +30,12 @@ def handler():
     application.add_handler(start_handler)
 
 
-    # /tokenrange command
-    token_range_conversation_handler = ConversationHandler(
-        entry_points = [CommandHandler("tokenrange", token_range)],
+    # /setassetrange command
+    asset_range_conversation_handler = ConversationHandler(
+        entry_points = [CommandHandler("setassetrange", asset_range)],
         states={
-            TO_SET_TOKEN: [
-                MessageHandler(filters.TEXT, set_token_get_lowersp),
+            TO_SET_ASSET: [
+                MessageHandler(filters.TEXT, set_asset_get_lowersp),
             ],
             TO_SET_LOWER_SP: [
                 MessageHandler(filters.Regex('(\d*\.)?\d+') , set_lowersp_get_uppersp),
@@ -45,22 +45,22 @@ def handler():
             ]
         },
         fallbacks=[
-            CommandHandler('clean', clean_token_range),
-            CommandHandler('startfollow', start_follow_token_range)
+            CommandHandler('clean', clean_asset_range),
+            CommandHandler('startfollow', start_follow_asset_range)
         ],
     )
-    application.add_handler(token_range_conversation_handler)
+    application.add_handler(asset_range_conversation_handler)
 
 
-    # /stoptokenrange command
-    stop_token_range_handler = CommandHandler('stoptokenrange', stop_follow_token_range)
-    application.add_handler(stop_token_range_handler)
+    # /stopassetrange command
+    stop_asset_range_handler = CommandHandler('stopassetrange', stop_follow_asset_range)
+    application.add_handler(stop_asset_range_handler)
 
 
-    # /getactivetr command
-    get_active_tr_handler = CommandHandler('getactivetr', get_active_token_range)
-    application.add_handler(get_active_tr_handler)
-
+    # /getactivear command
+    get_active_tr_handler = CommandHandler('getactivear', get_active_asset_range)
+    application.add_handler(get_active_tr_handler)    
+    
 
     # run Telegram bot
     application.run_polling()

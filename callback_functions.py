@@ -4,8 +4,8 @@ from telegram.ext import (
     ConversationHandler,
     CallbackContext
 )
+import time
 from trader import Trader
-from data_sources import CoinGeckoDataSource
 from custom.settings import *
 
 
@@ -16,49 +16,49 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     content = update.to_dict()
     text_start1 = f'Hi {content["message"]["chat"]["first_name"]}! Welcome to Cryptocurrency Price Alert.\n'
     text_start2 = 'This bot sends you a notification if a cryptocurrency overtake stop-prices.\n\nHere the command list:\n\n'
-    cm = f"{' '*8}/start\n\n{' '*8}/tokenrange\n\n{' '*8}/tokentrade\n\n{' '*8}/stop"
+    cm = f"{' '*8}/start\n\n{' '*8}/setassetrange\n\n{' '*8}/assettrade\n\n{' '*8}/stop"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=text_start1+text_start2+cm)
 
 
-# return codes for ConversationHandler token range
+# return codes for ConversationHandler asset-range
 # They could be anything, here they are int.
-TO_SET_TOKEN, TO_SET_LOWER_SP, TO_SET_UPPER_SP, TOKEN_UPPER_SP_SET = range(4)
+TO_SET_ASSET, TO_SET_LOWER_SP, TO_SET_UPPER_SP = range(3)
 
-async def token_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def asset_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
-    Callback function for token-range ConversationHandler.
-    It starts the conversation and ask user for token id.
-    Token id is the way data-source API identifies the token.
+    Callback function for asset-range ConversationHandler.
+    It starts the conversation and ask user for asset id.
+    Asset id is the way data-source API identifies the asset.
     """
-    print('token_range')
+    print('asset_range')
     
-    if not context.user_data.get('tr_list'): # first time in token range
+    if not context.user_data.get('tr_list'): # first time in asset-range
         context.user_data['tr_list'] = []
 
-    await update.message.reply_text("Please, enter the CoinGecko id of the token")
-    return TO_SET_TOKEN
+    await update.message.reply_text("Please, enter the CoinGecko id of the asset")
+    return TO_SET_ASSET
 
 
-async def set_token_get_lowersp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def set_asset_get_lowersp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
-    Callback function for token-range ConversationHandler.
-    It stores the token id and ask the user for the lower stop-price.
+    Callback function for asset-range ConversationHandler.
+    It stores the asset id and ask the user for the lower stop-price.
     """
-    print('set_token_get_lowersp')
+    print('set_asset_get_lowersp')
 
-    token_id = update.message.text.lower()
-    if token_id in [ t.get('token_id') for t in context.user_data['tr_list'] ]:
-        await update.message.reply_text(f"{token_id} already exists.")
-        return token_range(update=update, context=context)
+    asset_id = update.message.text.lower()
+    if asset_id in [ t.get('asset_id') for t in context.user_data['tr_list'] ]:
+        await update.message.reply_text(f"{asset_id} already exists.")
+        return asset_range(update=update, context=context)
     else:
-        context.user_data['tr_list'].append( {'token_id': token_id } )
-        await update.message.reply_text(f"{token_id} set.\nPlease, enter the lower stop price ($)")
+        context.user_data['tr_list'].append( {'asset_id': asset_id } )
+        await update.message.reply_text(f"{asset_id} set.\nPlease, enter the lower stop price ($)")
         return TO_SET_LOWER_SP
 
 
 async def set_lowersp_get_uppersp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
-    Callback function for token-range ConversationHandler.
+    Callback function for asset-range ConversationHandler.
     It stores the lower stop-price and ask the user for the upper stop-price
     """
     print('set_lowersp_get_uppersp')
@@ -72,7 +72,7 @@ async def set_lowersp_get_uppersp(update: Update, context: ContextTypes.DEFAULT_
 
 async def set_uppersp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
-    Callback function for token-range ConversationHandler.
+    Callback function for asset-range ConversationHandler.
     It stores the upper stop-price and start the background price monitoring
     """
     print('set_uppersp_start_background')
@@ -82,60 +82,66 @@ async def set_uppersp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     
     await update.message.reply_text(f"{upper_sp} $ set.")
 
-    token_id = context.user_data['tr_list'][-1]['token_id']
+    asset_id = context.user_data['tr_list'][-1]['asset_id']
     lower_sp = context.user_data['tr_list'][-1]['lower_sp'] 
     await update.message.reply_text(
-        f"Check data:\n\n{' '*8}{token_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/startfollow or /clean"
+        f"Check data:\n\n{' '*8}{asset_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/startfollow or /clean"
         )
 
 
-async def clean_token_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def clean_asset_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
-    Callback function for token-range ConversationHandler.
-    It cleans up the last information about token-range and 
-    exits the token-range ConversationHandler.
+    Callback function for asset-range ConversationHandler.
+    It cleans up the last information about asset-range and 
+    exits the asset-range ConversationHandler.
     """
-    print('/clean_token_range')
+    print('/clean_asset_range')
 
     context.user_data['tr_list'].pop()
-    await update.message.reply_text('Last token id, lower sp and upper sp cleaned')
+    await update.message.reply_text('Last asset id, lower sp and upper sp cleaned')
     return ConversationHandler.END
 
 
-async def start_follow_token_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def start_follow_asset_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
-    Callback function for token-range ConversationHandler.
+    Callback function for asset-range ConversationHandler.
     It calls repeatedly the range-check function, running it in a new job, in background.
-    It also exits the token-range ConversationHandler.
+    It also exits the asset-range ConversationHandler.
     """
-    print('start_follow_token_range')
+    print('start_follow_asset_range')
 
-    token_id = context.user_data['tr_list'][-1]['token_id']
+    asset_id = context.user_data['tr_list'][-1]['asset_id']
     lower_sp = context.user_data['tr_list'][-1]['lower_sp']
     upper_sp = context.user_data['tr_list'][-1]['upper_sp']
 
     await update.message.reply_text(
-        f"Background monitoring:\n\n{' '*8}{token_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/stoptokenrange"
+        f"Background monitoring:\n\n{' '*8}{asset_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/stopassetrange"
     )
 
-    # To keep things separate, even if token_id, lower_sp and upper_sp are in context.user_data, 
-    # they are passed to the auxiliary job as auxiliary data.
+    # To keep things separate, even if asset_id, lower_sp and upper_sp are in context.user_data, 
+    # they are set inside the Trader object and passed to the auxiliary job as auxiliary data.
     # In this way, every aux_job has its own aux_data.
+    trader = Trader(MAX_OLDNESS_PRICE)
+    trader.asset_id = asset_id
+    trader.lower_sp = lower_sp
+    trader.upper_sp = upper_sp
+    
     aux_data = {
         'update': update,
-        'token_id': token_id,
-        'lower_sp': lower_sp,
-        'upper_sp': upper_sp
+        'trader': trader,
+        #'asset_id': asset_id,
+        #'lower_sp': lower_sp,
+        #'upper_sp': upper_sp
     }
     
-    job_name = context.user_data['tr_list'][-1]['token_id']
+    job_name = f"assetrange_{context.user_data['tr_list'][-1]['asset_id']}"
     job_id = context.job_queue.run_repeating(
                                 callback=aux_job, 
                                 interval=DATA_SOURCE_REQUESTS_RATE,
                                 #first=0,
                                 #last=60,
                                 data=aux_data, 
-                                name=job_name, # is the token_id 
+                                name=job_name, # is the asset_id 
                                 user_id=update.effective_user.id,
                                 chat_id=update.effective_chat.id,
                                 )
@@ -146,52 +152,51 @@ async def start_follow_token_range(update: Update, context: ContextTypes.DEFAULT
 async def aux_job(context: CallbackContext):
     """
     This is a scheduled job managed by context.job_queue.
-    It needs a data-source and a trader, and they determine if the token price is or isn't into the range.
+    It needs a data-source and a trader, and they determine if the asset price is or isn't into the range.
     """
-    print('background_token_range')
+    print('background_asset_range')
     
-    trader = Trader(CoinGeckoDataSource(), MAX_OLDNESS_PRICE)
-    token_id = context.job.data['token_id']
-    lower_sp = context.job.data['lower_sp']
-    upper_sp = context.job.data['upper_sp']
+    trader = context.job.data['trader']
+    asset_id = trader.asset_id
+    lower_sp = trader.lower_sp
+    upper_sp = trader.upper_sp
+    # asset_id = context.job.data['asset_id']
+    # lower_sp = context.job.data['lower_sp']
+    # upper_sp = context.job.data['upper_sp']
 
     try:
-        evaluation = trader.check_price_in_range(
-            token_id=token_id,
-            lower_sp=lower_sp,
-            upper_sp=upper_sp
-            )
+        evaluation = trader.check_price_in_range()
         print('evaluation:', evaluation)
     except Exception as e:
-        await context.bot.send_message(chat_id=context.job.chat_id, text=f'{e}\nStill monitoring token range though')
+        await context.bot.send_message(chat_id=context.job.chat_id, text=f'{e}\nStill monitoring asset-range though')
     else:
         if evaluation[0]: # price under the lower sp
-            notification = f"{token_id} {evaluation[0]} $\nUNDER THE LOWER SP {lower_sp}"
+            notification = f"{asset_id} {evaluation[0]} $\nUNDER THE LOWER SP {lower_sp}"
             await context.bot.send_message(chat_id=context.job.chat_id, text=notification)
-            return await stop_follow_token_range(context.job.data['update'], context)
+            return await stop_follow_asset_range(context.job.data['update'], context)
             
         if evaluation[2]: # price above the upper sp
-            notification = f"{'token_id'} {evaluation[2]} $\nABOVE THE UPPER SP {lower_sp}"
+            notification = f"{asset_id} {evaluation[2]} $\nABOVE THE UPPER SP {upper_sp}"
             await context.bot.send_message(chat_id=context.job.chat_id, text=notification)
-            return await stop_follow_token_range(context.job.data['update'], context)
+            return await stop_follow_asset_range(context.job.data['update'], context)
     
 
 
-async def stop_follow_token_range(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def stop_follow_asset_range(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Callback function for token-range.
-    It stops monitoring the token-range for the given token id.
-    If only one token-range is set, it doesn't need the token id.
+    Callback function for asset-range.
+    It stops monitoring the asset-range for the given asset id.
+    If only one asset-range is set, it doesn't need the asset id.
     """
-    print('stop_follow_token_range')
+    print('stop_follow_asset_range')
     
     print('Jobs before stop request')
     context.job_queue.scheduler.print_jobs()
+
     if len(context.user_data['tr_list']) == 0:
-        await update.message.reply_text(f"No token-range set.")
-    if len(context.user_data['tr_list']) == 1:
-        print('len 1')
-        token_id = context.user_data['tr_list'][0].get('token_id')
+        await update.message.reply_text(f"No asset-range set.")
+    elif len(context.user_data['tr_list']) == 1:
+        asset_id = context.user_data['tr_list'][0].get('asset_id')
         lower_sp = context.user_data['tr_list'][0].get('lower_sp')
         upper_sp = context.user_data['tr_list'][0].get('upper_sp')
         job_id = context.user_data['tr_list'][0].get('job_id')
@@ -201,13 +206,17 @@ async def stop_follow_token_range(update: Update, context: ContextTypes.DEFAULT_
         print('Jobs after stop request')
         context.job_queue.scheduler.print_jobs()
         await update.message.reply_text(
-            f"Stop monitoring:\n\n{' '*8}{token_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/tokenrange"
+            f"Stop monitoring:\n\n{' '*8}{asset_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/setassetrange"
             )
+    elif ' '.join(context.args).lower() == 'all':
+        context.job_queue.scheduler.remove_all_jobs('default')
+        print('Jobs after stop request')
+        context.job_queue.scheduler.print_jobs()
+        await update.message.reply_text(f"Stop monitoring all assets")
     else:
-        print('len long')
-        token_id = ' '.join(context.args).lower()
+        asset_id = ' '.join(context.args).lower()
         for t in context.user_data['tr_list']:
-            if t.get('token_id') == token_id:
+            if t.get('asset_id') == asset_id:
                 lower_sp = t.get('lower_sp')
                 upper_sp = t.get('upper_sp')
                 job_id = t.get('job_id')
@@ -217,22 +226,22 @@ async def stop_follow_token_range(update: Update, context: ContextTypes.DEFAULT_
                 print('Jobs after stop request')
                 context.job_queue.scheduler.print_jobs()
                 await update.message.reply_text(
-                    f"Stop monitoring:\n\n{' '*8}{token_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/tokenrange"
+                    f"Stop monitoring:\n\n{' '*8}{asset_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/setassetrange"
                     )
 
 
-async def get_active_token_range(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def get_active_asset_range(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Callback function for token-range.
-    It shows the active jobs monitoring tokens.
+    Callback function for asset-range.
+    It shows the active jobs monitoring assets.
     """
-    print('get_active_token_range')
+    print('get_active_asset_range')
     
     jobs = ''
     for j in context.job_queue.jobs():
         jobs += f'\n{j.name}'
     
     if jobs == '':
-        await update.message.reply_text('No active token range')
+        await update.message.reply_text('No active asset-range')
     else:
-        await update.message.reply_text(f'Active token range list:{jobs}')
+        await update.message.reply_text(f'Active asset-range list:{jobs}')

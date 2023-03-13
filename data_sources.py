@@ -6,13 +6,13 @@ class CoinGeckoDataSource:
         self.base_path = 'https://api.coingecko.com/api/v3/'
         self.max_delta_time = 5 * 60
         
-    def get_simple_price(self, token_id: str) -> dict:
+    def get_simple_price(self, asset_id: str) -> dict:
         """
-        It requests to the HTTP CoinGecko API the price of a token id.
+        HTTP request to CoinGecko API for the price of an asset.
         """
         try:
             response = requests.get(
-                f'{self.base_path}simple/price?ids={token_id}&vs_currencies=usd&include_last_updated_at=true&precision=full'
+                f'{self.base_path}simple/price?ids={asset_id}&vs_currencies=usd&include_last_updated_at=true&precision=full'
                 )
         except Exception as e:
             raise Exception(e)
@@ -21,6 +21,4 @@ class CoinGeckoDataSource:
                 raise Exception("HTTP Response Error")
             if response.json() == {}:
                 raise Exception("No price in HTTP Response")
-        
-        data = response.json()
-        return data
+            return response.json()
