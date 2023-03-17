@@ -6,8 +6,14 @@ class Trader():
     asset_id = None
     lower_sp = None
     upper_sp = None
-    entry_price = None
-    local_th = None
+
+    network = 'optimism'
+    contract = '0x1c3140ab59d6caf9fa7459c6f83d4b52ba881d36'
+    entry_price = None # float
+    local_max = 0 # float
+    local_min = 0 # float
+    ref_1 = None # ref_1 is one step before ref_0
+    ref_0 = None # ref_0 is one step after ref_1
 
     def __init__(self, max_oldness_price=None):
         self.data_source = CoinGeckoDataSource()
@@ -39,5 +45,74 @@ class Trader():
                     return None, price, None
 
 
-    def trade_strategy(self):
-        self.entry_price
+    def check_to_sell(self, price) -> bool:
+        # maximum allowed loss
+        max_loss = 0.97 # -3%
+        max_loss_below_local_max = 0.97 # -3%
+        
+        # get price from DEX
+        # price = self.data_source.get_dex_price(self.network, self.contract)
+
+        # check maximum allowed loss
+        if price < self.entry_price * max_loss:
+            return  True
+
+        # references initialization
+        if not self.ref_1:
+            self.ref_1 = price
+            
+        if self.ref_1 and ( not self.ref_0 ):
+            self.ref_0 = price
+
+        # trend monitoring
+        if self.ref_1 > self.ref_0 < price:
+            self.local_min = self.ref_0
+
+        if self.ref_1 > self.ref_0 > price:
+            pass
+
+        if self.ref_1 < self.ref_0 < price:
+            pass
+
+        if self.ref_1 < self.ref_0 > price:
+            self.local_max = self.ref_0
+            
+        # check loss from local max
+        if price < self.local_max * max_loss_below_local_max:
+            return True
+
+       
+        # ref step ahead
+        self.ref_1 = self.ref_0
+        self.ref_0 = price
+        return False
+
+
+# import random
+# # prices = []
+# # for i in range(50):
+# #     p = random.gauss(1000, 20)
+# #     if p > 0 :
+# #         prices.append( p )
+# source = CoinGeckoDataSource()
+# prices = source.get_historical_prices('optimism', 90)
+# tr = Trader()
+
+# ratio = 1.0
+# for _ in range(1000):
+#     entry_idx = random.randint( 0, int( len(prices)*0.75 ) )
+#     tr.entry_price = prices[entry_idx]
+
+#     for i, price in enumerate( prices[entry_idx+1:], start=1):
+#         if tr.check_to_sell(price):
+#             ratio *= price / tr.entry_price
+
+#             # ratio = price / tr.entry_price
+#             # if ratio < 1:
+#             #     perc = - (1 - ratio) * 100
+#             # else:
+#             #     perc = (ratio - 1) * 100
+#             # print('Entry price:', prices[0], 'Exit price:', price, 'Result:', perc, '%')
+#             print(i)
+#             break
+# print(ratio)

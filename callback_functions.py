@@ -32,8 +32,8 @@ async def asset_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     """
     print('asset_range')
     
-    if not context.user_data.get('tr_list'): # first time in asset-range
-        context.user_data['tr_list'] = []
+    if not context.user_data.get('ar_list'): # first time in asset-range
+        context.user_data['ar_list'] = []
 
     await update.message.reply_text("Please, enter the CoinGecko id of the asset")
     return TO_SET_ASSET
@@ -47,11 +47,11 @@ async def set_asset_get_lowersp(update: Update, context: ContextTypes.DEFAULT_TY
     print('set_asset_get_lowersp')
 
     asset_id = update.message.text.lower()
-    if asset_id in [ t.get('asset_id') for t in context.user_data['tr_list'] ]:
+    if asset_id in [ t.get('asset_id') for t in context.user_data['ar_list'] ]:
         await update.message.reply_text(f"{asset_id} already exists.")
         return asset_range(update=update, context=context)
     else:
-        context.user_data['tr_list'].append( {'asset_id': asset_id } )
+        context.user_data['ar_list'].append( {'asset_id': asset_id } )
         await update.message.reply_text(f"{asset_id} set.\nPlease, enter the lower stop price ($)")
         return TO_SET_LOWER_SP
 
@@ -64,7 +64,7 @@ async def set_lowersp_get_uppersp(update: Update, context: ContextTypes.DEFAULT_
     print('set_lowersp_get_uppersp')
 
     lower_sp = float(update.message.text)
-    context.user_data['tr_list'][-1]['lower_sp'] = lower_sp
+    context.user_data['ar_list'][-1]['lower_sp'] = lower_sp
 
     await update.message.reply_text(f"{lower_sp} $ set.\nPlease, enter the upper stop price ($)")
     return TO_SET_UPPER_SP
@@ -78,12 +78,12 @@ async def set_uppersp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     print('set_uppersp_start_background')
 
     upper_sp = float(update.message.text)
-    context.user_data['tr_list'][-1]['upper_sp'] = upper_sp
+    context.user_data['ar_list'][-1]['upper_sp'] = upper_sp
     
     await update.message.reply_text(f"{upper_sp} $ set.")
 
-    asset_id = context.user_data['tr_list'][-1]['asset_id']
-    lower_sp = context.user_data['tr_list'][-1]['lower_sp'] 
+    asset_id = context.user_data['ar_list'][-1]['asset_id']
+    lower_sp = context.user_data['ar_list'][-1]['lower_sp'] 
     await update.message.reply_text(
         f"Check data:\n\n{' '*8}{asset_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/startfollow or /clean"
         )
@@ -97,7 +97,7 @@ async def clean_asset_range(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """
     print('/clean_asset_range')
 
-    context.user_data['tr_list'].pop()
+    context.user_data['ar_list'].pop()
     await update.message.reply_text('Last asset id, lower sp and upper sp cleaned')
     return ConversationHandler.END
 
@@ -110,9 +110,9 @@ async def start_follow_asset_range(update: Update, context: ContextTypes.DEFAULT
     """
     print('start_follow_asset_range')
 
-    asset_id = context.user_data['tr_list'][-1]['asset_id']
-    lower_sp = context.user_data['tr_list'][-1]['lower_sp']
-    upper_sp = context.user_data['tr_list'][-1]['upper_sp']
+    asset_id = context.user_data['ar_list'][-1]['asset_id']
+    lower_sp = context.user_data['ar_list'][-1]['lower_sp']
+    upper_sp = context.user_data['ar_list'][-1]['upper_sp']
 
     await update.message.reply_text(
         f"Background monitoring:\n\n{' '*8}{asset_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/stopassetrange"
@@ -126,6 +126,7 @@ async def start_follow_asset_range(update: Update, context: ContextTypes.DEFAULT
     trader.lower_sp = lower_sp
     trader.upper_sp = upper_sp
     
+    
     aux_data = {
         'update': update,
         'trader': trader,
@@ -134,18 +135,29 @@ async def start_follow_asset_range(update: Update, context: ContextTypes.DEFAULT
         #'upper_sp': upper_sp
     }
     
-    job_name = f"assetrange_{context.user_data['tr_list'][-1]['asset_id']}"
+    # pre-call to check asset_id
+    pre_job_id = context.job_queue.run_once(
+        callback=aux_job,
+        when=0,
+        data=aux_data,
+        name=f"pre_{context.user_data['ar_list'][-1]['asset_id']}",
+        user_id=update.effective_user.id,
+        chat_id=update.effective_chat.id,
+    )
+    context.user_data['ar_list'][-1]['job_id'] = pre_job_id
+
+    # run repeating in background
     job_id = context.job_queue.run_repeating(
-                                callback=aux_job, 
-                                interval=DATA_SOURCE_REQUESTS_RATE,
-                                #first=0,
-                                #last=60,
-                                data=aux_data, 
-                                name=job_name, # is the asset_id 
-                                user_id=update.effective_user.id,
-                                chat_id=update.effective_chat.id,
-                                )
-    context.user_data['tr_list'][-1]['job_id'] = job_id
+        callback=aux_job, 
+        interval=DATA_SOURCE_REQUESTS_RATE,
+        #first=0,
+        #last=60,
+        data=aux_data, 
+        name=f"{context.user_data['ar_list'][-1]['asset_id']}",
+        user_id=update.effective_user.id,
+        chat_id=update.effective_chat.id,
+    )
+    context.user_data['ar_list'][-1]['job_id'] = job_id
     return ConversationHandler.END
 
 
@@ -160,25 +172,21 @@ async def aux_job(context: CallbackContext):
     asset_id = trader.asset_id
     lower_sp = trader.lower_sp
     upper_sp = trader.upper_sp
-    # asset_id = context.job.data['asset_id']
-    # lower_sp = context.job.data['lower_sp']
-    # upper_sp = context.job.data['upper_sp']
 
     try:
         evaluation = trader.check_price_in_range()
-        print('evaluation:', evaluation)
     except Exception as e:
         await context.bot.send_message(chat_id=context.job.chat_id, text=f'{e}\nStill monitoring asset-range though')
     else:
         if evaluation[0]: # price under the lower sp
             notification = f"{asset_id} {evaluation[0]} $\nUNDER THE LOWER SP {lower_sp}"
             await context.bot.send_message(chat_id=context.job.chat_id, text=notification)
-            return await stop_follow_asset_range(context.job.data['update'], context)
+            await stop_follow_asset_range(context.job.data['update'], context)
             
         if evaluation[2]: # price above the upper sp
             notification = f"{asset_id} {evaluation[2]} $\nABOVE THE UPPER SP {upper_sp}"
             await context.bot.send_message(chat_id=context.job.chat_id, text=notification)
-            return await stop_follow_asset_range(context.job.data['update'], context)
+            await stop_follow_asset_range(context.job.data['update'], context)
     
 
 
@@ -193,16 +201,16 @@ async def stop_follow_asset_range(update: Update, context: ContextTypes.DEFAULT_
     print('Jobs before stop request')
     context.job_queue.scheduler.print_jobs()
 
-    if len(context.user_data['tr_list']) == 0:
+    if len(context.user_data['ar_list']) == 0:
         await update.message.reply_text(f"No asset-range set.")
-    elif len(context.user_data['tr_list']) == 1:
-        asset_id = context.user_data['tr_list'][0].get('asset_id')
-        lower_sp = context.user_data['tr_list'][0].get('lower_sp')
-        upper_sp = context.user_data['tr_list'][0].get('upper_sp')
-        job_id = context.user_data['tr_list'][0].get('job_id')
+    elif len(context.user_data['ar_list']) == 1:
+        asset_id = context.user_data['ar_list'][0].get('asset_id')
+        lower_sp = context.user_data['ar_list'][0].get('lower_sp')
+        upper_sp = context.user_data['ar_list'][0].get('upper_sp')
+        job_id = context.user_data['ar_list'][0].get('job_id')
 
         job_id.schedule_removal()
-        context.user_data['tr_list'].pop()
+        context.user_data['ar_list'].pop()
         print('Jobs after stop request')
         context.job_queue.scheduler.print_jobs()
         await update.message.reply_text(
@@ -215,14 +223,14 @@ async def stop_follow_asset_range(update: Update, context: ContextTypes.DEFAULT_
         await update.message.reply_text(f"Stop monitoring all assets")
     else:
         asset_id = ' '.join(context.args).lower()
-        for t in context.user_data['tr_list']:
+        for t in context.user_data['ar_list']:
             if t.get('asset_id') == asset_id:
                 lower_sp = t.get('lower_sp')
                 upper_sp = t.get('upper_sp')
                 job_id = t.get('job_id')
 
                 job_id.schedule_removal()
-                context.user_data['tr_list'].remove(t)
+                context.user_data['ar_list'].remove(t)
                 print('Jobs after stop request')
                 context.job_queue.scheduler.print_jobs()
                 await update.message.reply_text(
