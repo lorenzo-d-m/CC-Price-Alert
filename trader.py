@@ -86,33 +86,3 @@ class Trader():
         self.ref_1 = self.ref_0
         self.ref_0 = price
         return False
-
-
-# import random
-# # prices = []
-# # for i in range(50):
-# #     p = random.gauss(1000, 20)
-# #     if p > 0 :
-# #         prices.append( p )
-# source = CoinGeckoDataSource()
-# prices = source.get_historical_prices('optimism', 90)
-# tr = Trader()
-
-# ratio = 1.0
-# for _ in range(1000):
-#     entry_idx = random.randint( 0, int( len(prices)*0.75 ) )
-#     tr.entry_price = prices[entry_idx]
-
-#     for i, price in enumerate( prices[entry_idx+1:], start=1):
-#         if tr.check_to_sell(price):
-#             ratio *= price / tr.entry_price
-
-#             # ratio = price / tr.entry_price
-#             # if ratio < 1:
-#             #     perc = - (1 - ratio) * 100
-#             # else:
-#             #     perc = (ratio - 1) * 100
-#             # print('Entry price:', prices[0], 'Exit price:', price, 'Result:', perc, '%')
-#             print(i)
-#             break
-# print(ratio)
