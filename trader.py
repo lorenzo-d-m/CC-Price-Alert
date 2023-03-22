@@ -19,6 +19,29 @@ class Trader():
         self.data_source = CoinGeckoDataSource()
         self.max_oldness_price = max_oldness_price # max allowed oldness for price from data_souce
 
+    def get_avg_std(self, days: int) -> dict:
+        """
+        It return: price, max, min, avg, std, and volatility.
+        """
+        from math import sqrt
+
+        prices = self.data_source.get_historical_prices(self.asset_id, days)
+        avg = sum(prices) / len(prices)
+        std = sqrt( ( sum([p**2 for p in prices]) / len(prices) ) - ( avg ** 2 ) )
+
+        quotation = self.data_source.get_simple_price(self.asset_id)
+        price = quotation[self.asset_id]["usd"]
+        t = time.localtime( quotation[self.asset_id]["last_updated_at"] ) # (tm_year=2023, tm_mon=3, tm_mday=22, tm_hour=21, tm_min=56, tm_sec=23, tm_wday=2, tm_yday=81, tm_isdst=0)
+
+        return {
+            "price": f'$ {price} {t[0]}-{t[1]}-{t[2]} {t[3]}:{t[4]}',
+            "max": max(prices),
+            "min": min(prices),
+            "avg": avg,
+            "std": std,
+            "volatility": std / avg,
+        }
+
 
     def check_price_in_range(self) -> tuple:
             """
@@ -86,3 +109,32 @@ class Trader():
         self.ref_1 = self.ref_0
         self.ref_0 = price
         return False
+
+
+# import random
+# # prices = []
+# # for i in range(50):
+# #     p = random.gauss(1000, 20)
+# #     if p > 0 :
+# #         prices.append( p )
+    
+# tr = Trader()
+
+# ratio = 1.0
+# for _ in range(1000):
+#     entry_idx = random.randint( 0, int( len(prices)*0.75 ) )
+#     tr.entry_price = prices[entry_idx]
+
+#     for i, price in enumerate( prices[entry_idx+1:], start=1):
+#         if tr.check_to_sell(price):
+#             ratio *= price / tr.entry_price
+
+#             # ratio = price / tr.entry_price
+#             # if ratio < 1:
+#             #     perc = - (1 - ratio) * 100
+#             # else:
+#             #     perc = (ratio - 1) * 100
+#             # print('Entry price:', prices[0], 'Exit price:', price, 'Result:', perc, '%')
+#             print(i)
+#             break
+# print(ratio)

@@ -53,11 +53,12 @@ class CoinGeckoDataSource:
         
     
     def get_historical_prices(self, asset_id: str, days_ago: int) -> tuple:
-        # Data granularity is automatic (cannot be adjusted)
-        # 1 day from current time = 5 minute interval data
-        # 1 - 90 days from current time = hourly data
-        # above 90 days from current time = daily data (00:00 UTC)
-
+        """
+        Data granularity is automatic (cannot be adjusted):
+        1 day from current time = 5 minute interval data |
+        1 - 90 days from current time = hourly data |
+        above 90 days from current time = daily data (00:00 UTC)
+        """
         response = requests.get(
             f'{self.coingecko_base_path}coins/{asset_id}/market_chart?vs_currency=usd&days={days_ago}'
             )
@@ -74,5 +75,6 @@ class CoinGeckoDataSource:
 
 
 # source = CoinGeckoDataSource()
-# price = source.get_historical_prices('ethereum', 2)
+# prices = source.get_historical_prices('ethereum', 2)
+# price = source.get_simple_price('optimism')
 # print(type(price), price)

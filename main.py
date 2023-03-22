@@ -32,9 +32,9 @@ def handler():
 
     # /setassetrange command
     asset_range_conversation_handler = ConversationHandler(
-        entry_points = [CommandHandler("setassetrange", asset_range)],
+        entry_points = [CommandHandler("setassetrange", asset_range_entry_point)],
         states={
-            TO_SET_ASSET: [
+            TO_SET_ASSET_AR: [
                 MessageHandler(filters.TEXT, set_asset_get_lowersp),
             ],
             TO_SET_LOWER_SP: [
@@ -51,15 +51,32 @@ def handler():
     )
     application.add_handler(asset_range_conversation_handler)
 
-
     # /stopassetrange command
     stop_asset_range_handler = CommandHandler('stopassetrange', stop_follow_asset_range)
     application.add_handler(stop_asset_range_handler)
 
-
     # /getactivear command
     get_active_tr_handler = CommandHandler('getactivear', get_active_asset_range)
-    application.add_handler(get_active_tr_handler)    
+    application.add_handler(get_active_tr_handler)  
+
+
+    # /getassetstats command
+    asset_stats_conversation_handler = ConversationHandler(
+        entry_points = [CommandHandler("getassetstats", asset_stats_entry_point)],
+        states={
+            TO_SET_ASSET_STATS: [
+                MessageHandler(filters.TEXT, set_asset_get_days),
+            ],
+            TO_SET_DAYS: [
+                MessageHandler(filters.Regex('\d+') , set_days),
+            ]
+        },
+        fallbacks=[
+            CommandHandler('clean', clean_asset_stats),
+            CommandHandler('getstats', get_asset_stats)
+        ],
+    )
+    application.add_handler(asset_stats_conversation_handler)  
     
 
     # run Telegram bot

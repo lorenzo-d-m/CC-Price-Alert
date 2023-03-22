@@ -4,7 +4,6 @@ from telegram.ext import (
     ConversationHandler,
     CallbackContext
 )
-import time
 from trader import Trader
 from custom.settings import *
 
@@ -20,11 +19,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=text_start1+text_start2+cm)
 
 
+###################################################
+##################  ASSET RANGE  ##################
+###################################################
 # return codes for ConversationHandler asset-range
 # They could be anything, here they are int.
-TO_SET_ASSET, TO_SET_LOWER_SP, TO_SET_UPPER_SP = range(3)
+TO_SET_ASSET_AR, TO_SET_LOWER_SP, TO_SET_UPPER_SP = range(3)
 
-async def asset_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def asset_range_entry_point(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Callback function for asset-range ConversationHandler.
     It starts the conversation and ask user for asset id.
@@ -36,7 +38,7 @@ async def asset_range(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         context.user_data['ar_list'] = []
 
     await update.message.reply_text("Please, enter the CoinGecko id of the asset")
-    return TO_SET_ASSET
+    return TO_SET_ASSET_AR
 
 
 async def set_asset_get_lowersp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -49,7 +51,7 @@ async def set_asset_get_lowersp(update: Update, context: ContextTypes.DEFAULT_TY
     asset_id = update.message.text.lower()
     if asset_id in [ t.get('asset_id') for t in context.user_data['ar_list'] ]:
         await update.message.reply_text(f"{asset_id} already exists.")
-        return asset_range(update=update, context=context)
+        return asset_range_entry_point(update=update, context=context)
     else:
         context.user_data['ar_list'].append( {'asset_id': asset_id } )
         await update.message.reply_text(f"{asset_id} set.\nPlease, enter the lower stop price ($)")
@@ -70,7 +72,7 @@ async def set_lowersp_get_uppersp(update: Update, context: ContextTypes.DEFAULT_
     return TO_SET_UPPER_SP
 
 
-async def set_uppersp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def set_uppersp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Callback function for asset-range ConversationHandler.
     It stores the upper stop-price and start the background price monitoring
@@ -253,3 +255,95 @@ async def get_active_asset_range(update: Update, context: ContextTypes.DEFAULT_T
         await update.message.reply_text('No active asset-range')
     else:
         await update.message.reply_text(f'Active asset-range list:{jobs}')
+
+
+###################################################
+##################  ASSET STATS  ##################
+###################################################
+# return codes for ConversationHandler asset-range
+# They could be anything, here they are int.
+TO_SET_ASSET_STATS, TO_SET_DAYS = range(2)
+
+async def asset_stats_entry_point(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Callback function for asset statistics ConversationHandler.
+    It starts the conversation and ask user for asset id.
+    Asset id is the way data-source API identifies the asset.
+    """
+    print('asset_stats_entry_point')
+    
+    # if not context.user_data.get('as_list'): # first time in asset stats
+    #     context.user_data['as_list'] = []
+    context.user_data['asset_stats'] = {}
+
+    await update.message.reply_text("Please, enter the CoinGecko id of the asset")
+    return TO_SET_ASSET_STATS
+
+
+async def set_asset_get_days(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Callback function for asset stats ConversationHandler.
+    It stores the asset id and ask the user for the number of days to consider.
+    Please note: 
+    """
+    print('set_asset_get_days')
+
+    asset_id = update.message.text.lower()
+    # if asset_id in [ t.get('asset_id') for t in context.user_data['ar_list'] ]:
+    #     await update.message.reply_text(f"{asset_id} already exists.")
+    #     return asset_range(update=update, context=context)
+    # else:
+    #     context.user_data['ar_list'].append( {'asset_id': asset_id } )
+    #     await update.message.reply_text(f"{asset_id} set.\nPlease, enter the lower stop price ($)")
+    #     return TO_SET_LOWER_SP
+    
+    context.user_data['asset_stats']['asset_id'] = asset_id
+    await update.message.reply_text(f"{asset_id.capitalize()} set.\nPlease, enter the number of days to consider")
+    return TO_SET_DAYS
+
+
+async def set_days(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Callback function for asset stats ConversationHandler.
+    It stores the number of days and push the recap
+    """
+    print('set_days')
+
+    days = int(update.message.text)
+    context.user_data['asset_stats']['days'] = days
+    
+    await update.message.reply_text(f"{context.user_data['asset_stats']['asset_id'].capitalize()}\n{days} days history.\n\n/getstats or /clean")
+
+
+async def clean_asset_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Callback function for asset stats ConversationHandler.
+    It clears asset stats.
+    """
+    print('clear_asset_stats')
+
+    context.user_data['asset_stats'] = {}
+    await update.message.reply_text("Cleaned")
+    return ConversationHandler.END
+
+    
+async def get_asset_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Callback function for asset stats ConversationHandler.
+    It pushes the resulting statistics.
+    """
+    print('get_asset_stats')
+
+    trader = Trader()
+    trader.asset_id = context.user_data['asset_stats']['asset_id']
+    days = context.user_data['asset_stats']['days']
+    stats = trader.get_avg_std(days)
+    price = stats.get("price")
+    max = stats.get('max')
+    min = stats.get('min')
+    avg = stats.get('avg')
+    std = stats.get('std')
+    volatility = stats.get('volatility')
+    await update.message.reply_text(f"{trader.asset_id.capitalize()}, {days} days\n\nPrice: {price}\n\nMax: {max}\n\nMin: {min}\n\nAvg: {avg}\n\nStd: {std}\n\nVolatility: {volatility:.4f}")
+    return ConversationHandler.END
+    
