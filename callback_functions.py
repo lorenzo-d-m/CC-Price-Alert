@@ -15,7 +15,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     content = update.to_dict()
     text_start1 = f'Hi {content["message"]["chat"]["first_name"]}! Welcome to Cryptocurrency Price Alert.\n'
     text_start2 = 'This bot sends you a notification if a cryptocurrency overtake stop-prices.\n\nHere the command list:\n\n'
-    cm = f"{' '*8}/start\n\n{' '*8}/setassetrange\n\n{' '*8}/assettrade\n\n{' '*8}/stop"
+    cm = f"{' '*8}/start\n\n{' '*8}/getassetstats\n\n{' '*8}/setassetrange\n\n{' '*8}/assettrade\n\n{' '*8}/stop"
     await context.bot.send_message(chat_id=update.effective_chat.id, text=text_start1+text_start2+cm)
 
 
