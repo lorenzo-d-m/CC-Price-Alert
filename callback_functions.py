@@ -158,7 +158,7 @@ async def start_follow_asset_range(update: Update, context: ContextTypes.DEFAULT
         name=f"{context.user_data['ar_list'][-1]['asset_id']}",
         user_id=update.effective_user.id,
         chat_id=update.effective_chat.id,
-        job_kwargs={"misfire_grace_time":30}
+        job_kwargs={"misfire_grace_time":30} # if the processor is busy, allow a delayed job scheduling of max 30 seconds. It avoids warnings
     )
     context.user_data['ar_list'][-1]['job_id'] = job_id
     return ConversationHandler.END

@@ -109,32 +109,44 @@ class Trader():
         self.ref_1 = self.ref_0
         self.ref_0 = price
         return False
-
-
-# import random
-# # prices = []
-# # for i in range(50):
-# #     p = random.gauss(1000, 20)
-# #     if p > 0 :
-# #         prices.append( p )
     
+
+    def stop_prices_strategy(self, price):
+        """
+        Random buy and stop-prices-based sell. It returns true if you have to sell, false otherwise
+        """
+        if price < self.entry_price * 0.91:
+            return True
+        if price > self.entry_price * 1.03:
+            return True
+        return False
+
+
+# 1import random
+# prices = []
+# for i in range(50):
+#     p = random.gauss(1645, 95.5)
+#     if p > 0 :
+#         prices.append( p )
+
+# data_source = CoinGeckoDataSource()
+# prices = data_source.get_historical_prices('ethereum', 60)
+
 # tr = Trader()
 
-# ratio = 1.0
-# for _ in range(1000):
-#     entry_idx = random.randint( 0, int( len(prices)*0.75 ) )
+# capital = 100
+# runs = 100
+# avg_runs = 0
+# for _ in range(runs):
+#     entry_idx = random.randint( 0, int( len(prices)*0.8 ) )
 #     tr.entry_price = prices[entry_idx]
+#     capital = capital - 0.5
 
 #     for i, price in enumerate( prices[entry_idx+1:], start=1):
-#         if tr.check_to_sell(price):
-#             ratio *= price / tr.entry_price
-
-#             # ratio = price / tr.entry_price
-#             # if ratio < 1:
-#             #     perc = - (1 - ratio) * 100
-#             # else:
-#             #     perc = (ratio - 1) * 100
-#             # print('Entry price:', prices[0], 'Exit price:', price, 'Result:', perc, '%')
-#             print(i)
+#         if tr.stop_prices_strategy(price):
+#             capital = (capital * price / tr.entry_price) - 0.5
+#             print(tr.entry_price, price)
 #             break
-# print(ratio)
+#     avg_runs += i/runs
+# print('Capital:', capital)
+# print('Avg runs:', avg_runs)
