@@ -65,8 +65,22 @@ async def set_lowersp_get_uppersp(update: Update, context: ContextTypes.DEFAULT_
     """
     print('set_lowersp_get_uppersp')
 
-    lower_sp = float(update.message.text)
-    context.user_data['ar_list'][-1]['lower_sp'] = lower_sp
+    # It is possible to enter an expression. E.g. 1+0.3 or 1+3%
+    raw_input = update.message.text.replace(' ', '')
+    try:
+        lower_sp = float(raw_input)
+    except:
+        if ('%' in raw_input) and '-' in raw_input:
+            raw_set = raw_input.replace('%', '').partition('-')
+            lower_sp = float(raw_set[0]) * ( 1 - float(raw_set[2])/100 )
+        elif ('%' in raw_input) and '+' in raw_input:
+            raw_set = raw_input.replace('%', '').partition('+')
+            lower_sp = float(raw_set[0]) * ( 1 + float(raw_set[2])/100 )
+        else:
+            lower_sp = float(eval(raw_input))
+    finally:
+        # store the lower stop-price
+        context.user_data['ar_list'][-1]['lower_sp'] = lower_sp
 
     await update.message.reply_text(f"{lower_sp} $ set.\nPlease, enter the upper stop price ($)")
     return TO_SET_UPPER_SP
@@ -79,13 +93,27 @@ async def set_uppersp(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     print('set_uppersp_start_background')
 
-    upper_sp = float(update.message.text)
-    context.user_data['ar_list'][-1]['upper_sp'] = upper_sp
-    
+    # It is possible to enter an expression. E.g. 1+0.3 or 1+3%
+    raw_input = update.message.text.replace(' ', '')
+    try:
+        upper_sp = float(raw_input)
+    except:
+        if ('%' in raw_input) and '-' in raw_input:
+            raw_set = raw_input.replace('%', '').partition('-')
+            upper_sp = float(raw_set[0]) * ( 1 - float(raw_set[2])/100 )
+        elif ('%' in raw_input) and '+' in raw_input:
+            raw_set = raw_input.replace('%', '').partition('+')
+            upper_sp = float(raw_set[0]) * ( 1 + float(raw_set[2])/100 )
+        else:
+            upper_sp = float(eval(raw_input))
+    finally:
+        # store the upper stop-price
+        context.user_data['ar_list'][-1]['upper_sp'] = upper_sp
+
     await update.message.reply_text(f"{upper_sp} $ set.")
 
     asset_id = context.user_data['ar_list'][-1]['asset_id']
-    lower_sp = context.user_data['ar_list'][-1]['lower_sp'] 
+    lower_sp = context.user_data['ar_list'][-1]['lower_sp']
     await update.message.reply_text(
         f"Check data:\n\n{' '*8}{asset_id}\n\n{' '*8}{lower_sp} $\n\n{' '*8}{upper_sp} $\n\n/startfollow or /clean"
         )
