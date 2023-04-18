@@ -71,10 +71,3 @@ class CoinGeckoDataSource:
         price_time_list = response.json().get('prices')
         
         return tuple( (item[1] for item in price_time_list) )
-
-
-
-# source = CoinGeckoDataSource()
-# prices = source.get_historical_prices('ethereum', 2)
-# price = source.get_simple_price('optimism')
-# print(type(price), price)

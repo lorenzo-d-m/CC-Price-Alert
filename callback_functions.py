@@ -371,8 +371,7 @@ async def get_asset_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     max = stats.get('max')
     min = stats.get('min')
     avg = stats.get('avg')
-    std = stats.get('std')
     volatility = stats.get('volatility')
-    await update.message.reply_text(f"{trader.asset_id.capitalize()}, {days} days\n\nPrice: {price}\n\nMax: {max}\n\nMin: {min}\n\nAvg: {avg}\n\nStd: {std}\n\nVolatility: {volatility:.4f}")
+    await update.message.reply_text(f"{trader.asset_id.capitalize()}, {days} days\n\nPrice: {price}\n\nMax: {max}\n\nMin: {min}\n\nAvg: {avg}\n\nVolatility: {volatility:.4f}")
     return ConversationHandler.END
     

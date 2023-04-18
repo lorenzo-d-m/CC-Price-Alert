@@ -28,6 +28,7 @@ class Trader():
         prices = self.data_source.get_historical_prices(self.asset_id, days)
         avg = sum(prices) / len(prices)
         std = sqrt( ( sum([p**2 for p in prices]) / len(prices) ) - ( avg ** 2 ) )
+        volatility = std / avg * 100
 
         quotation = self.data_source.get_simple_price(self.asset_id)
         price = quotation[self.asset_id]["usd"]
@@ -38,8 +39,7 @@ class Trader():
             "max": max(prices),
             "min": min(prices),
             "avg": avg,
-            "std": std,
-            "volatility": std / avg,
+            "volatility": f'\u00B1 {volatility:.1f}%'
         }
 
 
@@ -122,31 +122,49 @@ class Trader():
         return False
 
 
-# 1import random
-# prices = []
-# for i in range(50):
-#     p = random.gauss(1645, 95.5)
-#     if p > 0 :
-#         prices.append( p )
+if __name__ == '__main__':
+    import random
+    # prices = []
+    # for i in range(50):
+    #     p = random.gauss(1645, 95.5)
+    #     if p > 0 :
+    #         prices.append( p )
 
-# data_source = CoinGeckoDataSource()
-# prices = data_source.get_historical_prices('ethereum', 60)
+    data_source = CoinGeckoDataSource()
+    prices = data_source.get_historical_prices('ethereum', 60)
 
-# tr = Trader()
+    capital = 100
+    runs = 10 ** 3
+    slipage_perc = 0.1 # 0.1%
+    avg_runs = 0
+    for _ in range(runs): # montecarlo iterations
+        entry_idx = random.randint( 0, int( len(prices)*0.8 ) )
+        entry_price = prices[entry_idx]
+        capital = ( capital * (1 - slipage_perc/100) ) - 0.25
+        for price in prices[entry_idx + 1:]:
+            if price < entry_price: # sell
+                capital = ( capital * (1 - slipage_perc/100) ) - 0.25
+                break
+        capital = capital * (price / entry_price)
+    print(capital)
 
-# capital = 100
-# runs = 100
-# avg_runs = 0
-# for _ in range(runs):
-#     entry_idx = random.randint( 0, int( len(prices)*0.8 ) )
-#     tr.entry_price = prices[entry_idx]
-#     capital = capital - 0.5
 
-#     for i, price in enumerate( prices[entry_idx+1:], start=1):
-#         if tr.stop_prices_strategy(price):
-#             capital = (capital * price / tr.entry_price) - 0.5
-#             print(tr.entry_price, price)
-#             break
-#     avg_runs += i/runs
-# print('Capital:', capital)
-# print('Avg runs:', avg_runs)
+       
+    
+
+    # capital = 100
+    # runs = 100
+    # avg_runs = 0
+    # for _ in range(runs):
+    #     entry_idx = random.randint( 0, int( len(prices)*0.8 ) )
+    #     tr.entry_price = prices[entry_idx]
+    #     capital = capital - 0.5
+
+    #     for i, price in enumerate( prices[entry_idx+1:], start=1):
+    #         if tr.stop_prices_strategy(price):
+    #             capital = (capital * price / tr.entry_price) - 0.5
+    #             print(tr.entry_price, price)
+    #             break
+    #     avg_runs += i/runs
+    # print('Capital:', capital)
+    # print('Avg runs:', avg_runs)
