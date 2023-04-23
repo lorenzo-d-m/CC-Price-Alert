@@ -25,21 +25,47 @@ class Trader():
         """
         from math import sqrt
 
+        # get historical data
         prices = self.data_source.get_historical_prices(self.asset_id, days)
-        avg = sum(prices) / len(prices)
-        std = sqrt( ( sum([p**2 for p in prices]) / len(prices) ) - ( avg ** 2 ) )
-        volatility = std / avg * 100
 
+        # get current price
         quotation = self.data_source.get_simple_price(self.asset_id)
         price = quotation[self.asset_id]["usd"]
         t = time.localtime( quotation[self.asset_id]["last_updated_at"] ) # (tm_year=2023, tm_mon=3, tm_mday=22, tm_hour=21, tm_min=56, tm_sec=23, tm_wday=2, tm_yday=81, tm_isdst=0)
 
+        # price statistics
+        price_avg = sum(prices) / len(prices)
+        price_std = sqrt( ( sum([p**2 for p in prices]) / len(prices) ) - ( price_avg ** 2 ) )
+        price_volatility = price_std / price_avg * 100
+
+        # returns statistics
+        # Data granularity is automatic (cannot be adjusted)
+        # 1 day from current time = 5 minute interval data
+        # 1 - 90 days from current time = hourly data
+        # above 90 days from current time = daily data (00:00 UTC)
+        returns = list()
+        if days == 1: # 
+            returns.append(prices[-1] / prices[0])
+        elif days <= 90:
+            i = 0
+            while i + 23 < len(prices):
+                returns.append(prices[i+23] / prices[i])
+                i += 24
+        else:
+            for i in range(len(prices) - 1):
+                returns.append(prices[i+1] / prices[i])
+
+        
+        returns_daily_avg = sum(returns) / len(returns)
+        return_volatility = sqrt( ( sum([p**2 for p in returns]) / len(returns) ) - ( returns_daily_avg ** 2 ) )
+
         return {
             "price": f'$ {price} {t[0]}-{t[1]}-{t[2]} {t[3]}:{t[4]}',
-            "max": max(prices),
-            "min": min(prices),
-            "avg": avg,
-            "volatility": f'\u00B1 {volatility:.1f}%'
+            "price_max": max(prices),
+            "price_min": min(prices),
+            "price_avg": price_avg,
+            "price_volatility": f'\u00B1 {price_volatility:.1f}%',
+            "returns_volatility": f'\u00B1 {return_volatility:.4f}'
         }
 
 
@@ -123,30 +149,33 @@ class Trader():
 
 
 if __name__ == '__main__':
-    import random
+    trader = Trader()
+    trader.asset_id = 'optimism'
+    trader.get_avg_std(100)
+    # import random
     # prices = []
     # for i in range(50):
     #     p = random.gauss(1645, 95.5)
     #     if p > 0 :
     #         prices.append( p )
 
-    data_source = CoinGeckoDataSource()
-    prices = data_source.get_historical_prices('ethereum', 60)
+    # data_source = CoinGeckoDataSource()
+    # prices = data_source.get_historical_prices('ethereum', 60)
 
-    capital = 100
-    runs = 10 ** 3
-    slipage_perc = 0.1 # 0.1%
-    avg_runs = 0
-    for _ in range(runs): # montecarlo iterations
-        entry_idx = random.randint( 0, int( len(prices)*0.8 ) )
-        entry_price = prices[entry_idx]
-        capital = ( capital * (1 - slipage_perc/100) ) - 0.25
-        for price in prices[entry_idx + 1:]:
-            if price < entry_price: # sell
-                capital = ( capital * (1 - slipage_perc/100) ) - 0.25
-                break
-        capital = capital * (price / entry_price)
-    print(capital)
+    # capital = 100
+    # runs = 10 ** 3
+    # slipage_perc = 0.1 # 0.1%
+    # avg_runs = 0
+    # for _ in range(runs): # montecarlo iterations
+    #     entry_idx = random.randint( 0, int( len(prices)*0.8 ) )
+    #     entry_price = prices[entry_idx]
+    #     capital = ( capital * (1 - slipage_perc/100) ) - 0.25
+    #     for price in prices[entry_idx + 1:]:
+    #         if price < entry_price: # sell
+    #             capital = ( capital * (1 - slipage_perc/100) ) - 0.25
+    #             break
+    #     capital = capital * (price / entry_price)
+    # print(capital)
 
 
        
